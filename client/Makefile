@@ -3,7 +3,7 @@ TARGET = miniproject
 # compiler flags
 CFLAGS = -g -Wall -D_GNU_SOURCE
 # linker flags
-LDFLAGS = -g
+LDFLAGS = -g -pthread
 # list of sources
 SOURCES = $(shell find -name "*.c")
 # default rule, to compile everything
