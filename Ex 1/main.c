@@ -18,10 +18,8 @@
 
 #define ch_network 0
 #define ch_controller 1
-#define ch_signal 2
 
 static struct udp_conn conn;
-static int running = 1;
 
 unsigned long get_nstime(){
 	struct timespec tv;
@@ -52,10 +50,7 @@ void* sender(void* channelParam){
 			udp_send(&conn, buff, strlen(buff) + 1);
 		}else if(strncmp(buff, "STOP", 4) == 0){
 			udp_send(&conn, buff, 5);
-			running = 0;
 			return NULL;
-		}else if(strcmp(buff, "SIGNAL_ACK") == 0){
-			udp_send(&conn, buff, 11);
 		}
 	}
 
@@ -65,29 +60,13 @@ void* receiver(void* channelParam){
 	struct channel* channels = (struct channel*) channelParam;
 	char buff[BUFFER_SIZE];
 
-	while(running){
+	while(1){
 		udp_receive(&conn, buff, BUFFER_SIZE);
 
 		if(strncmp(buff, "GET_ACK", 7) == 0){
 			channel_send(&channels[ch_controller], buff);
 		}
-		else if(strcmp(buff, "SIGNAL") == 0){
-			channel_send(&channels[ch_signal], buff);
-		}
 	}
-	return NULL;
-}
-
-void* signals(void* channelParam){
-	struct channel* channels = (struct channel*) channelParam;
-	char buff[BUFFER_SIZE];
-	while(running){
-		channel_receive(&channels[ch_signal], buff);
-		if(strcmp(buff, "SIGNAL") == 0){
-			channel_send(&channels[ch_network], "SIGNAL_ACK");
-		}
-	}
-	return NULL;
 }
 
 void* controller(void* channelParam){	
@@ -135,9 +114,9 @@ int main(int argc, char* argv[]){
 
 	udp_init_client(&conn, 9999, "192.168.0.1");
 	
-	struct channel channels[3];
+	struct channel channels[2];
 	int i;
-	for (i = 0; i < 3; i ++){
+	for (i = 0; i < 2; i ++){
 		channel_init(&channels[i]);
 	}
 
@@ -145,18 +124,14 @@ int main(int argc, char* argv[]){
 	pthread_t send_t;
 	pthread_t receive_t;
 	pthread_t compute_t;
-	pthread_t signals_t;
 
 	pthread_create(&send_t, NULL, sender, (void*) channels);
 	pthread_create(&receive_t, NULL, receiver, (void*) channels);
 	pthread_create(&compute_t, NULL, controller, (void*) channels);
-	pthread_create(&signals_t, NULL, signals, (void*) channels);
-
 
 	pthread_join(send_t, NULL);
 	pthread_join(receive_t, NULL);
 	pthread_join(compute_t, NULL);
-	pthread_join(signals_t, NULL);
 
 
 
